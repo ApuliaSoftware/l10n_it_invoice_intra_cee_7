@@ -25,6 +25,7 @@
            <field name="name">Transfert Entry Journal</field>
            <field name="code">TEJ</field>
            <field name="type">general</field>
+           <field name="entry_posted" eval="True"/>
            <field name="sequence_id" ref="transfert_entry_journal_sequence"/>
        </record>
 
