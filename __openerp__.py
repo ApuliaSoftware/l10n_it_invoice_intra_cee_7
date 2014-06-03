@@ -28,7 +28,8 @@
     'author': 'CoOpenERP <info@coopenerp.it>',
     'website': 'http://www.coopenerp.it',
     'license': 'AGPL-3',
-    "depends": ['base', 'account', 'account_voucher', 'account_cancel'],
+    "depends": ['base', 'account', 'account_voucher', 'account_cancel',
+                'account_invoice_entry_date'],
     "init_xml": [],
     "update_xml": [
         'company/company_view.xml',
