@@ -314,7 +314,7 @@ class account_invoice(osv.osv):
             cr, uid, uid, context).company_id
         res['partner_id'] = company.auto_invoice_partner_id and \
             company.auto_invoice_partner_id.id \
-            or company.partner_id and company.partner_id.id
+            or res['partner_id']
         # ----- Delete line without reverse charge flag
         rc_lines = []
         for line in res['invoice_line']:
