@@ -284,6 +284,7 @@ class account_invoice(osv.osv):
             'number': '',
             'state': 'draft',
             'move_id': False,
+            'period_id': invoice.period_id and invoice.period_id.id or False,
             'account_id': invoice.partner_id.property_account_receivable.id,
             'journal_id': fiscal_position.journal_auto_invoice_id.id,
             'date_invoice': invoice.registration_date,
@@ -438,7 +439,8 @@ class account_invoice(osv.osv):
                 'debit': debit_1,
                 'credit': credit_1,
                 'partner_id': inv.partner_id.id,
-                'account_id': new_invoice.partner_id.property_account_payable.id,
+                'account_id':
+                new_invoice.partner_id.property_account_payable.id,
                 }))
             # ----- Products values
             account_move_line_vals.append((0, 0, {
@@ -454,15 +456,17 @@ class account_invoice(osv.osv):
                 'debit': debit_3,
                 'credit': credit_3,
                 'partner_id': new_invoice.partner_id.id,
-                'account_id': new_invoice.partner_id.property_account_receivable.id,
+                'account_id':
+                new_invoice.partner_id.property_account_receivable.id,
                 }))
             # ----- Account Move
             account_move_vals = {
                 'name': '/',
                 'state': 'draft',
+                'period_id': inv.period_id and inv.period_id.id or False,
                 'journal_id': fiscal_position.journal_transfer_entry_id.id,
                 'line_id': account_move_line_vals,
-                'date': inv.registration_date
+                'date': inv.registration_date,
                 }
             transfer_entry_id = move_obj.create(
                 cr, uid, account_move_vals, context)
