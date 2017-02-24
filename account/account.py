@@ -606,7 +606,7 @@ class account_invoice(osv.osv):
 
     def cerca_riconciliazione(self, cr, uid, inv_id, context=None):
         move_l_obj = self.pool.get('account.move.line')
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         inv = self.browse(cr,uid,inv_id)
         payable_id = inv.partner_id.property_account_payable.id
         receivable_id = inv.partner_id.property_account_receivable.id
