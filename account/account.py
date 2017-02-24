@@ -477,7 +477,6 @@ class account_invoice(osv.osv):
             self.write(cr, uid, [inv.id],
                        {'auto_invoice_id': auto_invoice_id,
                         'transfer_entry_id': transfer_entry_id})
-            import pdb;pdb.set_trace()
             #facciamo una cosa diversa riconciliamo le righe del giroconto
             # senza creare i voucher
             self. cerca_riconciliazione(cr, uid, inv.id,inv)
@@ -607,6 +606,7 @@ class account_invoice(osv.osv):
 
     def cerca_riconciliazione(self, cr, uid, inv_id,inv, context=None):
         move_l_obj = self.pool.get('account.move.line')
+        import pdb;pdb.set_trace()
         payable_id = inv.partner_id.property_account_payable.id
         receivable_id = inv.partner_id.property_account_receivable.id
         autoinv_move_id = inv.auto_invoice_id.id
@@ -617,11 +617,13 @@ class account_invoice(osv.osv):
             ('move_id','in',[autoinv_move_id,giroconto_move_id])
         ])
         if reconcile_lst:
-               move_l_obj.reconcile_partial(cr, uid, reconcile_lst)
+            reconcile = move_l_obj.reconcile_partial(cr, uid, reconcile_lst)
         # ora riconcilia il cliente
         reconcile_lst = move_l_obj.search(cr, uid, [
             ('account_id', '=', receivable_id),
             ('move_id', 'in', [autoinv_move_id, giroconto_move_id])
         ])
+        if reconcile_lst:
+            reconcile = move_l_obj.reconcile_partial(cr, uid, reconcile_lst)
 
         return True
