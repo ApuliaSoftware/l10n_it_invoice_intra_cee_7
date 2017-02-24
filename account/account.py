@@ -615,7 +615,7 @@ class account_invoice(osv.osv):
         # ora riconcilia le righe del fornitore
         reconcile_lst = move_l_obj.search(cr,uid,[
             ('account_id','=',payable_id),
-            ('move_id','in',[autoinv_move_id,giroconto_move_id])
+            ('move_id','in',[inv.move_id.id,giroconto_move_id])
         ])
         if reconcile_lst:
             reconcile = move_l_obj.reconcile_partial(cr, uid, reconcile_lst)
