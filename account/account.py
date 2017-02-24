@@ -366,6 +366,7 @@ class account_invoice(osv.osv):
         context = context or {}
         new_invoice_ids = []
         move_obj = self.pool.get('account.move')
+        move_l_obj = self.pool.get('account.move.line')
         wf_service = netsvc.LocalService("workflow")
         for inv in self.browse(cr, uid, ids, context):
             # ----- Apply Auto Invoice only on supplier invoice/refund
@@ -476,65 +477,74 @@ class account_invoice(osv.osv):
             self.write(cr, uid, [inv.id],
                        {'auto_invoice_id': auto_invoice_id,
                         'transfer_entry_id': transfer_entry_id})
-            # ----- Pay Autoinvoice
-            voucher_autoinvoice_id = self.voucher_from_invoice(
-                cr, uid, new_invoice.id, new_invoice.amount_total,
-                fiscal_position.journal_transfer_entry_id.id, 'receipt',
-                context)
-            # ----- Thanks to Andrea Camilli for fix
-            # ----- Create a payment for vat of supplier invoice
-            voucher_vat_supplier_id = self.voucher_from_invoice(
-                cr, uid, inv.id, inv.auto_invoice_amount_tax,
-                fiscal_position.journal_transfer_entry_id.id,
-                'payment', context)
-            # ----- Reconcile Credit of vat supplier payment with transfer move
-            voucher_obj = self.pool['account.voucher']
-            move_line_obj = self.pool['account.move.line']
-            transfer_move = move_obj.browse(cr, uid, transfer_entry_id)
-            line_voucher_to_be_reconcile = False
-            line_supplier_to_be_reconcile = False
-            # ----- Voucher vat supplier
-            voucher_vat_supplier = voucher_obj.browse(cr, uid,
-                                                      voucher_vat_supplier_id)
-            for move_line in voucher_vat_supplier.move_id.line_id:
-                if not move_line.reconcile and move_line.credit:
-                    line_voucher_to_be_reconcile = move_line.id
-            # ------ Transfer line
-            account_payable_id = new_invoice.partner_id.property_account_payable.id
-            for move_line in transfer_move.line_id:
-                if not move_line.reconcile and move_line.debit \
-                        and move_line.account_id.id == account_payable_id:
-                    line_supplier_to_be_reconcile = move_line.id
-            # ----- Reconcile
-            if line_voucher_to_be_reconcile and line_supplier_to_be_reconcile:
-                reconcile_ids = [line_voucher_to_be_reconcile,
-                                 line_supplier_to_be_reconcile]
-                move_line_obj.reconcile_partial(cr, uid, reconcile_ids,
-                                                context=context)
-            # ----- Reconcile Debit of Total Autoinvoice
-            #       payment with transfer move
-            line_voucher_to_be_reconcile = False
-            line_autoinvoice_to_be_reconcile = False
-            # ----- Voucher debit autoinvoice payment
-            voucher_autoinvoice = voucher_obj.browse(
-                cr, uid, voucher_autoinvoice_id)
-            for move_line in voucher_autoinvoice.move_id.line_id:
-                if not move_line.reconcile and move_line.debit:
-                    line_voucher_to_be_reconcile = move_line.id
-            # ----- Transfer line
-            account_receivable_id = new_invoice.partner_id.property_account_receivable.id
-            for move_line in transfer_move.line_id:
-                if not move_line.reconcile and move_line.credit \
-                        and move_line.account_id.id == account_receivable_id:
-                    line_autoinvoice_to_be_reconcile = move_line.id
-            # ----- Reconcile
-            if line_voucher_to_be_reconcile and \
-                    line_autoinvoice_to_be_reconcile:
-                reconcile_ids = [line_voucher_to_be_reconcile,
-                                 line_autoinvoice_to_be_reconcile]
-                move_line_obj.reconcile_partial(cr, uid, reconcile_ids,
-                                                context=context)
-            # ----- / Thanks to Andrea Camilli for fix
+            import pdb;pdb.set_trace()
+            #facciamo una cosa diversa riconciliamo le righe del giroconto
+            # senza creare i voucher
+            self. cerca_riconciliazione(cr, uid, inv.id,inv)
+
+            # Così come è un errore tutto quello che si fa.
+            # genera delle registrazioni con lo scopo di riconciliare ed aver un saldo fornitore
+            # corretto quando si fa il pagamento
+
+            # # ----- Pay Autoinvoice
+            # voucher_autoinvoice_id = self.voucher_from_invoice(
+            #     cr, uid, new_invoice.id, new_invoice.amount_total,
+            #     fiscal_position.journal_transfer_entry_id.id, 'receipt',
+            #     context)
+            # # ----- Thanks to Andrea Camilli for fix
+            # # ----- Create a payment for vat of supplier invoice
+            # voucher_vat_supplier_id = self.voucher_from_invoice(
+            #     cr, uid, inv.id, inv.auto_invoice_amount_tax,
+            #     fiscal_position.journal_transfer_entry_id.id,
+            #     'payment', context)
+            # # ----- Reconcile Credit of vat supplier payment with transfer move
+            # voucher_obj = self.pool['account.voucher']
+            # move_line_obj = self.pool['account.move.line']
+            # transfer_move = move_obj.browse(cr, uid, transfer_entry_id)
+            # line_voucher_to_be_reconcile = False
+            # line_supplier_to_be_reconcile = False
+            # # ----- Voucher vat supplier
+            # voucher_vat_supplier = voucher_obj.browse(cr, uid,
+            #                                           voucher_vat_supplier_id)
+            # for move_line in voucher_vat_supplier.move_id.line_id:
+            #     if not move_line.reconcile and move_line.credit:
+            #         line_voucher_to_be_reconcile = move_line.id
+            # # ------ Transfer line
+            # account_payable_id = new_invoice.partner_id.property_account_payable.id
+            # for move_line in transfer_move.line_id:
+            #     if not move_line.reconcile and move_line.debit \
+            #             and move_line.account_id.id == account_payable_id:
+            #         line_supplier_to_be_reconcile = move_line.id
+            # # ----- Reconcile
+            # if line_voucher_to_be_reconcile and line_supplier_to_be_reconcile:
+            #     reconcile_ids = [line_voucher_to_be_reconcile,
+            #                      line_supplier_to_be_reconcile]
+            #     move_line_obj.reconcile_partial(cr, uid, reconcile_ids,
+            #                                     context=context)
+            # # ----- Reconcile Debit of Total Autoinvoice
+            # #       payment with transfer move
+            # line_voucher_to_be_reconcile = False
+            # line_autoinvoice_to_be_reconcile = False
+            # # ----- Voucher debit autoinvoice payment
+            # voucher_autoinvoice = voucher_obj.browse(
+            #     cr, uid, voucher_autoinvoice_id)
+            # for move_line in voucher_autoinvoice.move_id.line_id:
+            #     if not move_line.reconcile and move_line.debit:
+            #         line_voucher_to_be_reconcile = move_line.id
+            # # ----- Transfer line
+            # account_receivable_id = new_invoice.partner_id.property_account_receivable.id
+            # for move_line in transfer_move.line_id:
+            #     if not move_line.reconcile and move_line.credit \
+            #             and move_line.account_id.id == account_receivable_id:
+            #         line_autoinvoice_to_be_reconcile = move_line.id
+            # # ----- Reconcile
+            # if line_voucher_to_be_reconcile and \
+            #         line_autoinvoice_to_be_reconcile:
+            #     reconcile_ids = [line_voucher_to_be_reconcile,
+            #                      line_autoinvoice_to_be_reconcile]
+            #     move_line_obj.reconcile_partial(cr, uid, reconcile_ids,
+            #                                     context=context)
+            # # ----- / Thanks to Andrea Camilli for fix
         return new_invoice_ids
 
     def action_number(self, cr, uid, ids, context=None):
@@ -593,3 +603,25 @@ class account_invoice(osv.osv):
             account_move.unlink(cr, uid, move_ids, context)
         return super(account_invoice, self).action_cancel(
             cr, uid, ids, context)
+
+
+    def cerca_riconciliazione(self, cr, uid, inv_id,inv, context=None):
+        move_l_obj = self.pool.get('account.move.line')
+        payable_id = inv.partner_id.property_account_payable.id
+        receivable_id = inv.partner_id.property_account_receivable.id
+        autoinv_move_id = inv.auto_invoice_id.id
+        giroconto_move_id = inv.transfer_entry_id.id
+        # ora riconcilia le righe del fornitore
+        reconcile_lst = move_l_obj.search(cr,uid,[
+            ('account_id','=',payable_id),
+            ('move_id','in',[autoinv_move_id,giroconto_move_id])
+        ])
+        if reconcile_lst:
+               move_l_obj.reconcile_partial(cr, uid, reconcile_lst)
+        # ora riconcilia il cliente
+        reconcile_lst = move_l_obj.search(cr, uid, [
+            ('account_id', '=', receivable_id),
+            ('move_id', 'in', [autoinv_move_id, giroconto_move_id])
+        ])
+
+        return True
