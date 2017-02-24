@@ -610,7 +610,7 @@ class account_invoice(osv.osv):
         inv = self.browse(cr,uid,inv_id)
         payable_id = inv.partner_id.property_account_payable.id
         receivable_id = inv.partner_id.property_account_receivable.id
-        autoinv_move_id = inv.auto_invoice_id.id
+        autoinv_move_id = inv.auto_invoice_id.move_id.id
         giroconto_move_id = inv.transfer_entry_id.id
         # ora riconcilia le righe del fornitore
         reconcile_lst = move_l_obj.search(cr,uid,[
