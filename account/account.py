@@ -479,7 +479,7 @@ class account_invoice(osv.osv):
                         'transfer_entry_id': transfer_entry_id})
             #facciamo una cosa diversa riconciliamo le righe del giroconto
             # senza creare i voucher
-            self. cerca_riconciliazione(cr, uid, inv.id,inv)
+            self.cerca_riconciliazione(cr, uid, inv.id)
 
             # Così come è un errore tutto quello che si fa.
             # genera delle registrazioni con lo scopo di riconciliare ed aver un saldo fornitore
@@ -604,9 +604,10 @@ class account_invoice(osv.osv):
             cr, uid, ids, context)
 
 
-    def cerca_riconciliazione(self, cr, uid, inv_id,inv, context=None):
+    def cerca_riconciliazione(self, cr, uid, inv_id, context=None):
         move_l_obj = self.pool.get('account.move.line')
         import pdb;pdb.set_trace()
+        inv = self.browse(cr,uid,inv_id)
         payable_id = inv.partner_id.property_account_payable.id
         receivable_id = inv.partner_id.property_account_receivable.id
         autoinv_move_id = inv.auto_invoice_id.id
