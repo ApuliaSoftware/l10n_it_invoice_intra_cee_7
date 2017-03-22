@@ -156,30 +156,37 @@ class account_invoice(osv.osv):
                 'auto_invoice_amount_tax': 0.0,
                 'auto_invoice_amount_total': 0.0
             }
-            for line in invoice.invoice_line:
-                if fp and fp.active_reverse_charge and line.reverse_charge:
-                    res[invoice.id][
-                        'auto_invoice_amount_untaxed'] += line.price_subtotal
-                    for t in tax_obj.compute_all(
-                            cr, uid, line.invoice_line_tax_id,
-                            (line.price_unit * (1-(
-                                line.discount or 0.0)/100.0)),
-                            line.quantity, line.product_id)['taxes']:
+            if invoice.auto_invoice_id:
+                res[invoice.id] = {
+                    'auto_invoice_amount_untaxed': invoice.auto_invoice_id.amount_untaxed,
+                    'auto_invoice_amount_tax': invoice.auto_invoice_id.amount_tax,
+                    'auto_invoice_amount_total': invoice.auto_invoice_id.amount_total
+                }
+            else:
+                for line in invoice.invoice_line:
+                    if fp and fp.active_reverse_charge and line.reverse_charge:
                         res[invoice.id][
-                            'auto_invoice_amount_tax'] += t['amount']
-                if (not fp) or (fp and not fp.active_reverse_charge):
-                    res[invoice.id][
-                        'auto_invoice_amount_untaxed'] += line.price_subtotal
-                    for t in tax_obj.compute_all(
-                            cr, uid, line.invoice_line_tax_id,
-                            (line.price_unit * (1-(
-                                line.discount or 0.0)/100.0)),
-                            line.quantity, line.product_id)['taxes']:
+                            'auto_invoice_amount_untaxed'] += line.price_subtotal
+                        for t in tax_obj.compute_all(
+                                cr, uid, line.invoice_line_tax_id,
+                                (line.price_unit * (1-(
+                                    line.discount or 0.0)/100.0)),
+                                line.quantity, line.product_id)['taxes']:
+                            res[invoice.id][
+                                'auto_invoice_amount_tax'] += t['amount']
+                    if (not fp) or (fp and not fp.active_reverse_charge):
                         res[invoice.id][
-                            'auto_invoice_amount_tax'] += t['amount']
-            res[invoice.id]['auto_invoice_amount_total'] = res[
-                invoice.id]['auto_invoice_amount_tax'] + res[
-                invoice.id]['auto_invoice_amount_untaxed']
+                            'auto_invoice_amount_untaxed'] += line.price_subtotal
+                        for t in tax_obj.compute_all(
+                                cr, uid, line.invoice_line_tax_id,
+                                (line.price_unit * (1-(
+                                    line.discount or 0.0)/100.0)),
+                                line.quantity, line.product_id)['taxes']:
+                            res[invoice.id][
+                                'auto_invoice_amount_tax'] += t['amount']
+                res[invoice.id]['auto_invoice_amount_total'] = res[
+                    invoice.id]['auto_invoice_amount_tax'] + res[
+                    invoice.id]['auto_invoice_amount_untaxed']
         return res
 
     _columns = {
@@ -441,8 +448,8 @@ class account_invoice(osv.osv):
                 'credit': credit_1,
                 'partner_id': inv.partner_id.id,
                 'account_id':
-                new_invoice.partner_id.property_account_payable.id,
-                }))
+                    new_invoice.partner_id.property_account_payable.id,
+            }))
             # ----- Products values
             account_move_line_vals.append((0, 0, {
                 'name': 'Products',
@@ -450,7 +457,7 @@ class account_invoice(osv.osv):
                 'credit': credit_2,
                 'partner_id': new_invoice.partner_id.id,
                 'account_id': fiscal_position.account_transient_id.id,
-                }))
+            }))
             # ----- Invoice Total
             account_move_line_vals.append((0, 0, {
                 'name': 'Invoice Total',
@@ -458,8 +465,8 @@ class account_invoice(osv.osv):
                 'credit': credit_3,
                 'partner_id': new_invoice.partner_id.id,
                 'account_id':
-                new_invoice.partner_id.property_account_receivable.id,
-                }))
+                    new_invoice.partner_id.property_account_receivable.id,
+            }))
             # ----- Account Move
             account_move_vals = {
                 'name': '/',
@@ -468,7 +475,7 @@ class account_invoice(osv.osv):
                 'journal_id': fiscal_position.journal_transfer_entry_id.id,
                 'line_id': account_move_line_vals,
                 'date': inv.registration_date,
-                }
+            }
             transfer_entry_id = move_obj.create(
                 cr, uid, account_move_vals, context)
             move_obj.post(cr, uid, [transfer_entry_id], context)
@@ -477,73 +484,9 @@ class account_invoice(osv.osv):
             self.write(cr, uid, [inv.id],
                        {'auto_invoice_id': auto_invoice_id,
                         'transfer_entry_id': transfer_entry_id})
-            #facciamo una cosa diversa riconciliamo le righe del giroconto
+            # facciamo una cosa diversa riconciliamo le righe del giroconto
             # senza creare i voucher
             self.cerca_riconciliazione(cr, uid, inv.id)
-
-            # Così come è un errore tutto quello che si fa.
-            # genera delle registrazioni con lo scopo di riconciliare ed aver un saldo fornitore
-            # corretto quando si fa il pagamento
-
-            # # ----- Pay Autoinvoice
-            # voucher_autoinvoice_id = self.voucher_from_invoice(
-            #     cr, uid, new_invoice.id, new_invoice.amount_total,
-            #     fiscal_position.journal_transfer_entry_id.id, 'receipt',
-            #     context)
-            # # ----- Thanks to Andrea Camilli for fix
-            # # ----- Create a payment for vat of supplier invoice
-            # voucher_vat_supplier_id = self.voucher_from_invoice(
-            #     cr, uid, inv.id, inv.auto_invoice_amount_tax,
-            #     fiscal_position.journal_transfer_entry_id.id,
-            #     'payment', context)
-            # # ----- Reconcile Credit of vat supplier payment with transfer move
-            # voucher_obj = self.pool['account.voucher']
-            # move_line_obj = self.pool['account.move.line']
-            # transfer_move = move_obj.browse(cr, uid, transfer_entry_id)
-            # line_voucher_to_be_reconcile = False
-            # line_supplier_to_be_reconcile = False
-            # # ----- Voucher vat supplier
-            # voucher_vat_supplier = voucher_obj.browse(cr, uid,
-            #                                           voucher_vat_supplier_id)
-            # for move_line in voucher_vat_supplier.move_id.line_id:
-            #     if not move_line.reconcile and move_line.credit:
-            #         line_voucher_to_be_reconcile = move_line.id
-            # # ------ Transfer line
-            # account_payable_id = new_invoice.partner_id.property_account_payable.id
-            # for move_line in transfer_move.line_id:
-            #     if not move_line.reconcile and move_line.debit \
-            #             and move_line.account_id.id == account_payable_id:
-            #         line_supplier_to_be_reconcile = move_line.id
-            # # ----- Reconcile
-            # if line_voucher_to_be_reconcile and line_supplier_to_be_reconcile:
-            #     reconcile_ids = [line_voucher_to_be_reconcile,
-            #                      line_supplier_to_be_reconcile]
-            #     move_line_obj.reconcile_partial(cr, uid, reconcile_ids,
-            #                                     context=context)
-            # # ----- Reconcile Debit of Total Autoinvoice
-            # #       payment with transfer move
-            # line_voucher_to_be_reconcile = False
-            # line_autoinvoice_to_be_reconcile = False
-            # # ----- Voucher debit autoinvoice payment
-            # voucher_autoinvoice = voucher_obj.browse(
-            #     cr, uid, voucher_autoinvoice_id)
-            # for move_line in voucher_autoinvoice.move_id.line_id:
-            #     if not move_line.reconcile and move_line.debit:
-            #         line_voucher_to_be_reconcile = move_line.id
-            # # ----- Transfer line
-            # account_receivable_id = new_invoice.partner_id.property_account_receivable.id
-            # for move_line in transfer_move.line_id:
-            #     if not move_line.reconcile and move_line.credit \
-            #             and move_line.account_id.id == account_receivable_id:
-            #         line_autoinvoice_to_be_reconcile = move_line.id
-            # # ----- Reconcile
-            # if line_voucher_to_be_reconcile and \
-            #         line_autoinvoice_to_be_reconcile:
-            #     reconcile_ids = [line_voucher_to_be_reconcile,
-            #                      line_autoinvoice_to_be_reconcile]
-            #     move_line_obj.reconcile_partial(cr, uid, reconcile_ids,
-            #                                     context=context)
-            # # ----- / Thanks to Andrea Camilli for fix
         return new_invoice_ids
 
     def action_number(self, cr, uid, ids, context=None):
