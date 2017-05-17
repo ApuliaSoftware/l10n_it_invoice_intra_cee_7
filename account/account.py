@@ -299,10 +299,18 @@ class account_invoice(osv.osv):
         })
         new_line = []
         tax_relation = self._get_tax_relation(cr, uid, invoice_id, context)
+        if 'account_asset' in self.pool.get('ir.module.module')._installed().keys():
+            asset = True
+        else:
+            asset = False
         for line in new_inv['invoice_line']:
             vals = line[2].copy()
             # ----- Change account in new invoice line
             vals['account_id'] = fiscal_position.account_transient_id.id
+            if asset:
+                vals['asset_id'] = False
+                vals['asset_category_id'] = False
+
             # ----- Change tax in new invoice line
             new_tax = []
             for tax in vals['invoice_line_tax_id']:
