@@ -299,7 +299,9 @@ class account_invoice(osv.osv):
         })
         new_line = []
         tax_relation = self._get_tax_relation(cr, uid, invoice_id, context)
-        if 'account_asset' in self.pool.get('ir.module.module')._installed().keys():
+        if self.pool.get('ir.module.module').search(cr,uid,[
+                ('state','=','installed'),
+                ('name','=','l10n_it_asset')]):
             asset = True
         else:
             asset = False
