@@ -457,8 +457,7 @@ class account_invoice(osv.osv):
                 'debit': debit_1,
                 'credit': credit_1,
                 'partner_id': inv.partner_id.id,
-                'account_id':
-                    invoice_id.account_id.id,
+                'account_id': inv.account_id.id,
             }))
             # ----- Products values
             account_move_line_vals.append((0, 0, {
@@ -474,8 +473,7 @@ class account_invoice(osv.osv):
                 'debit': debit_3,
                 'credit': credit_3,
                 'partner_id': new_invoice.partner_id.id,
-                'account_id':
-                    new_invoice.account_id.id,
+                'account_id': new_invoice.account_id.id,
             }))
             # ----- Account Move
             account_move_vals = {
