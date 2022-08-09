@@ -196,6 +196,9 @@ class account_invoice(osv.osv):
         'auto_invoice_id': fields.many2one('account.invoice',
                                            'Auto Invoice',
                                            ondelete="set null"),
+        'rc_purchase_invoice_id': fields.many2one('account.invoice',
+                                           'Purchase  invoice',
+                                           ondelete="set null"),                                         
         'auto_invoice_amount_untaxed': fields.function(
             _auto_invoice_amount_all,
             digits_compute=dp.get_precision('Account'),
@@ -426,6 +429,8 @@ class account_invoice(osv.osv):
                     cr, uid, inv.id, fiscal_position.id, context)
             if not new_inv:
                 continue
+            else:
+                new_inv['rc_purchase_invoice_id'] = inv.id
             # ----- Create Auto Invoice...Yeah!!!!!
             auto_invoice_id = self.create(cr, uid, new_inv, context)
             new_invoice_ids.append(auto_invoice_id)
