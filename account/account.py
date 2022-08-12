@@ -300,6 +300,12 @@ class account_invoice(osv.osv):
             'date_invoice': invoice.registration_date,
             'registration_date': invoice.registration_date,
         })
+        # ----- Get partner from company for auto invoice
+        company = self.pool.get('res.users').browse(
+            cr, uid, uid, context).company_id
+        res['partner_id'] = company.auto_invoice_partner_id and \
+            company.auto_invoice_partner_id.id \
+            or res['partner_id']
         new_line = []
         tax_relation = self._get_tax_relation(cr, uid, invoice_id, context)
         if self.pool.get('ir.module.module').search(cr,uid,[
